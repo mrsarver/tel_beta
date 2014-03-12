@@ -7,10 +7,10 @@ Requirements
 ------------
 
 To execute this source code, you must have:
-*Python 2.7.x (32-bit)
-*Numpy (32-bit)
-*Matplotlib
-*OpenCV module Python
+* Python 2.7.x (32-bit)
+* Numpy (32-bit)
+* Matplotlib
+* OpenCV module Python
 
 Usage
 -----
