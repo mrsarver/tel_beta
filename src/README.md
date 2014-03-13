@@ -13,7 +13,7 @@ Install
 -------
 
 This python script was tested on Windows 8.1, using:
-*Python 2.7 (32-bit)
-*Numpy (32-bit)
-*Matplotlib (32-bit)
-*OpenCV (32-bit)
+* Python 2.7 (32-bit)
+* Numpy (32-bit)
+* Matplotlib (32-bit)
+* OpenCV (32-bit)
