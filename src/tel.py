@@ -31,7 +31,10 @@ class Application(Frame):
 		self.fileMenu.add_command(label="End Call", command=self.endCall)
 		self.fileMenu.add_separator()
 		self.fileMenu.add_command(label="Exit", command=self.exit)
+		self.editMenu = Menu(self.appMenu, tearoff=0)
+		self.editMenu.add_command(label="Placeholder", command=None)
 		self.appMenu.add_cascade(label="File", menu=self.fileMenu)
+		self.appMenu.add_cascade(label="Edit", menu=self.editMenu)
 
 	def newCall(self):
 		"""Initialize a new call to a specified IP"""
@@ -41,15 +44,14 @@ class Application(Frame):
 			tkMessageBox.showerror("Invalid IPv4 address", ip + "is an invalid IPv4 address.  Please enter a valid IPv4 address.")
 			self.IPENTRY.focus_set()
 			self.IPLABEL["fg"] = "red"
-			self.FRAME["image"] = self.derp
 			return False
 
 		self.IPLABEL["fg"] = "black"
 
 		if self.VideoThread == None:
+			self.callActive = True
 			self.VideoThread = Thread(target = self.webcamCap)
 			self.VideoThread.daemon = True
-			self.callActive = True
 			self.VideoThread.start()
 			return True
 		else:
@@ -96,7 +98,6 @@ class Application(Frame):
 	def __init__(self, master=None):
 		Frame.__init__(self, master)
 		self.picture = ImageTk.PhotoImage(Image.open("telsmall.png"))
-		self.derp = ImageTk.PhotoImage(Image.open("derp.jpg"))
 		self.createWidgets()
 		self.VideoThread = None
 		self.callActive = False
@@ -105,7 +106,7 @@ class Application(Frame):
 
 if __name__ == "__main__":
 	app = Application()
-	app.master.title("Tel v 0.0.1")
+	app.master.title("Tel v 0.1")
 	#app.master.maxsize(512, 512)
 	app.master.config(menu=app.appMenu)
 	app.master.protocol("WM_DELETE_WINDOW", app.exit)
