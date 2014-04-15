@@ -2,7 +2,7 @@ from Tkinter import *
 from PIL import Image, ImageTk
 import tkMessageBox
 import Queue
-import server
+import receiver
 
 class Application(Frame):
 	def createWidgets(self):
@@ -11,20 +11,25 @@ class Application(Frame):
 		self.serverPort = IntVar()
 		self.PORTLABEL = Label(self, text="LISTEN ON PORT: ")
 		self.PORTENTRY = Entry(self, width=5, textvar=self.serverPort)
-		self.BUTNSTART = Button(self, text="Start listening", command=self.startServer)
+		self.BUTTONNEW = Button(self, text="Start listening", command=self.startServer)
 		self.PICTFRAME = Label(self, image=self.picture)
 
 		self.PORTLABEL.grid(row=0, column=0)
 		self.PORTENTRY.grid(row=0, column=1)
-		self.BUTNSTART.grid(row=0, column=2)
+		self.BUTTONNEW.grid(row=0, column=2)
 		self.PICTFRAME.grid(row=1, column=0, columnspan=3)
+
+		self.appMenu = Menu(self)
+		self.fileMenu = Menu(self.appMenu, tearoff=0)
+		self.fileMenu.add_command(label="Exit", command=self.exit)
+		self.appMenu.add_cascade(label="File", menu=self.fileMenu)
 
 		self.PORTENTRY.focus_set()
 		pass
 
 	def loadPictures(self):
 		"""Loads the initial tel image"""
-		self.picture = ImageTk.PhotoImage(Image.open("../telsmall.png"))
+		self.picture = ImageTk.PhotoImage(Image.open("../../img/telsmall.png"))
 
 	def loadQueue(self):
 		"""Initialize a queue for image storage"""
@@ -67,11 +72,11 @@ class Application(Frame):
 
 if __name__ == "__main__":
 	app = Application()
-	app.master.title("Tel Server v 0.1")
+	app.master.title("Tel Receiver v 0.2")
 	app.master.maxsize(800, 600)
-	#app.master.config(menu=app.appMenu)
+	app.master.config(menu=app.appMenu)
 	app.master.protocol("WM_DELETE_WINDOW", app.exit)
-	app.master.wm_iconbitmap('../tel.ico')
+	app.master.wm_iconbitmap('../../img/tel.ico')
 	app.mainloop()
 
 	
