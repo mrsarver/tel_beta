@@ -14,6 +14,7 @@ class Receiver(threading.Thread):
 			self.sock.bind((self.ip, self.port))
 			self.sock.listen(1)
 			conn, addr = self.sock.accept()
+			#print "connected!"
 			message = ""
 			while True:
 				data = conn.recv(self.buffer)
