@@ -8,16 +8,18 @@ class Application(Frame):
 	def createWidgets(self):
 		"""Construct Graphical User Interface"""
 		#default skype port is 23399
-		self.serverPort = IntVar()
+		self.receiverPort = IntVar()
 		self.PORTLABEL = Label(self, text="LISTEN ON PORT: ")
-		self.PORTENTRY = Entry(self, width=5, textvar=self.serverPort)
-		self.BUTTONNEW = Button(self, text="Start listening", command=self.startServer)
+		self.PORTENTRY = Entry(self, width=5, textvar=self.receiverPort)
+		self.BUTTONNEW = Button(self, text="Start listening", command=self.startReceiver)
+		self.BUTTONEND = Button(self, text="End listening", command=self.endReceiver)
 		self.PICTFRAME = Label(self, image=self.picture)
 
 		self.PORTLABEL.grid(row=0, column=0)
 		self.PORTENTRY.grid(row=0, column=1)
 		self.BUTTONNEW.grid(row=0, column=2)
-		self.PICTFRAME.grid(row=1, column=0, columnspan=3)
+		self.BUTTONEND.grid(row=0, column=3)
+		self.PICTFRAME.grid(row=1, column=0, columnspan=4)
 
 		self.appMenu = Menu(self)
 		self.fileMenu = Menu(self.appMenu, tearoff=0)
@@ -35,32 +37,44 @@ class Application(Frame):
 		"""Initialize a queue for image storage"""
 		self.frameQueue = Queue.Queue()
 
-	def startServer(self):
-		"""Initiate the server"""
-		self.flag = True
-		self.serverPort = self.PORTENTRY.get()
-		self.serverPort = int(self.serverPort)
-		if self.serverPort > 1024:
-			self.serverThread = server.Server(self.serverPort, self.frameQueue)
-			self.serverThread.start()
-			while self.flag:
-				if not self.frameQueue.empty():
-					self.flag = False
-					message = self.frameQueue.get()
-					print "got message"
-					im = Image.fromstring('RGB', (640, 480), message)
-					im = ImageTk.PhotoImage(image = im)
-					self.PICTFRAME["image"] = im
-					self.PICTFRAME._image_cache = im
-				else:
-					continue
-		else:
-			tkMessageBox.showerror("Invalid PORT", self.serverPort + " is an invalid port.  Please enter a valid Port.")
-			return
+	def startReceiver(self):
+		"""Initiate the receiver"""
+		self.isRunning = True
+		self.receiverPort = self.PORTENTRY.get()
+		self.receiverPort = int(self.receiverPort)
+
+		if self.receiverPort < 1024 or self.receiverPort > 65535:
+			tkMessageBox.showerror("Invalid PORT", self.receiverPort + " is an invalid port.  Please enter a valid Port.")
+			return False
+
+		self.receiverThread = receiver.Receiver(self.receiverPort, self.frameQueue)
+		self.receiverThread.start()
+
+		while self.isRunning:
+			if not self.frameQueue.empty():
+				message = self.frameQueue.get()
+				im = Image.fromstring('RGB', (640, 480), message)
+				im = ImageTk.PhotoImage(image = im)
+				self.PICTFRAME["image"] = im
+				self.PICTFRAME._image_cache = im
+			else:
+				continue
+
+			self.update()
+
+		self.frameQueue.queue.clear()
+		self.receiverThread.isRunning = False
+		return True
+
+	def endReceiver(self):
+		"""Kill the receiving of frames"""
+		self.isRunning = False
+		self.PICTFRAME["image"] = self.picture
 
 	def exit(self):
 		"""Proper exiting and resource management"""
 		if tkMessageBox.askyesno("Quit?", "Are you sure you want to exit?"):
+			self.endReceiver()
 			self.quit()
 
 	def __init__(self, master=None):
@@ -78,5 +92,3 @@ if __name__ == "__main__":
 	app.master.protocol("WM_DELETE_WINDOW", app.exit)
 	app.master.wm_iconbitmap('../../img/tel.ico')
 	app.mainloop()
-
-	

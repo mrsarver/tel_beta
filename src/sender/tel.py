@@ -1,10 +1,10 @@
 from Tkinter import *
 from PIL import Image, ImageTk
-from threading import *
 import tkMessageBox
-import socket
+import Queue
 import regextel
 import cv2
+import sender
 
 class Application(Frame):
 	def createWidgets(self):
@@ -28,9 +28,9 @@ class Application(Frame):
 		self.PORTENTRY.grid(row=0, column=3)
 		self.BUTTONNEW.grid(row=1, column=0, sticky=W+E)
 		self.BUTTONEND.grid(row=1, column=1, sticky=W+E)
-		self.BUTTONXIT.grid(row=1, column=2, sticky=W+E)
-		self.PICTFRAME.grid(row=2, column=0, columnspan=3)
-		self.LISTBXLOG.grid(row=3, column=0, columnspan=2)
+		self.BUTTONXIT.grid(row=1, column=2, columnspan=4, sticky=W+E)
+		self.PICTFRAME.grid(row=2, column=0, columnspan=4)
+		self.LISTBXLOG.grid(row=3, column=0, columnspan=3)
 		self.SCROLLLOG.grid(row=3, column=3)
 		self.grid_rowconfigure(3, weight=1)
 
@@ -45,17 +45,12 @@ class Application(Frame):
 		self.appMenu.add_cascade(label="File", menu=self.fileMenu)
 		self.appMenu.add_cascade(label="Edit", menu=self.editMenu)
 
-	def setupCall(self, ip):
-		"""Builds a socket with call info"""
-		HOST = ip
-		PORT = 5006
-		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.sock.connect((HOST, PORT))
-		self.LogWrite("socket created")
-
 	def newCall(self):
 		"""Initialize a new call to a specified IP"""
 		ip = self.IPENTRY.get()
+		destPort = IntVar()
+		destPort = self.PORTENTRY.get()
+		destPort = int(destPort)
 
 		if regextel.isValidIP(ip) == None or ip == "0.0.0.0":
 			tkMessageBox.showerror("Invalid IPv4 address", ip + "is an invalid IPv4 address.  Please enter a valid IPv4 address.")
@@ -63,32 +58,34 @@ class Application(Frame):
 			self.IPLABEL["fg"] = "red"
 			return False
 
+		if destPort < 1024:
+			tkMessageBox.showerror("Invalid PORT", destPort + " is an invalid port.  Please enter a valid Port.")
+
+
 		self.IPLABEL["fg"] = "black"
 
-		if self.VideoThread is None:
-			self.callActive = True
-			#self.setupCall(ip)
-			self.VideoThread = Thread(target = self.webcamCap)
-			self.VideoThread.start()
-			return True
-		else:
-			tkMessageBox.showerror("End Current Call",  "Please end the current call before making a new one")
-			return False
+		self.callActive = True
+		cap = cv2.VideoCapture(0)
+		self.senderThread = sender.Sender(ip, destPort, self.frameQueue)
+		self.senderThread.start()
+		while self.callActive:
+			ret, img = cap.read()
+			img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+			img = Image.fromarray(img)
+			message = img.tostring()
+			img = ImageTk.PhotoImage(image=img)
+			self.PICTFRAME["image"] = img
+			self.frameQueue.put(message)
+			self.update()
+		cap.release()
 
 	def endCall(self):
 		"""End the current call, returns True on success, False on failure"""
-		if self.VideoThread is None:
-			return False
-
-		self.callActive = False
-		self.VideoThread.join()
-		self.VideoThread = None
-		self.PICTFRAME["image"] = self.picture
-		if self.sock != None:
-			self.sock.close()
-			self.LogWrite("closing socket!")
-
-		return True
+		if self.callActive:
+			self.callActive = False
+			self.PICTFRAME["image"] = self.picture
+			self.senderThread.isRunning = False
+			self.senderThread.join()
 
 	def exit(self):
 		"""Proper exiting and resource management"""
@@ -96,43 +93,37 @@ class Application(Frame):
 			self.endCall()
 			self.quit()
 
+	def loadPictures(self):
+		"""Loads the initial tel image"""
+		self.picture = ImageTk.PhotoImage(Image.open("../../img/telsmall.png"))
+
+	def loadQueue(self):
+		"""Initialize a queue for image storage"""
+		self.frameQueue = Queue.Queue()
+
+	def loadVar(self):
+		"""Loads any variables required for the application"""
+		self.callActive = False
+		self.maxLogSize = 100
+
 	def LogWrite(self, message):
 		"""Writes a message to the log box"""
 		self.LISTBXLOG.insert(END, message)
-		size = self.LISTBXLOG.size()
-		if size > 100:
+		if self.LISTBXLOG.size() > self.maxLogSize:
 			self.LISTBXLOG.delete(0)
 		pass
 
-	def webcamCap(self):
-		"""Gets an image from the video device"""
-		cap = cv2.VideoCapture(0)
-		#i feel ashamed of this loop
-		while self.callActive:
-			ret, img = cap.read()
-			img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-
-			img = Image.fromarray(img)
-			img = ImageTk.PhotoImage(image = img)
-			self.PICTFRAME["image"] = img
-			self.PICTFRAME._image_cache = img
-
-		#release the capture device before close
-		cap.release()
-
 	def __init__(self, master=None):
 		Frame.__init__(self, master)
-		self.picture = ImageTk.PhotoImage(Image.open("../../img/telsmall.png"))
+		self.loadVar()
+		self.loadPictures()
+		self.loadQueue()
 		self.createWidgets()
-		self.VideoThread = None
-		self.sock = None
-		self.callActive = False
 		self.grid()
 
 if __name__ == "__main__":
 	app = Application()
 	app.master.title("Tel Sender v 0.2")
-	app.master.maxsize(800, 600)
 	app.master.config(menu=app.appMenu)
 	app.master.protocol("WM_DELETE_WINDOW", app.exit)
 	app.master.wm_iconbitmap('../../img/tel.ico')
